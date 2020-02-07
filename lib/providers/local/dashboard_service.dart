@@ -1,38 +1,113 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_socket_io/flutter_socket_io.dart';
+import 'package:adhara_socket_io/adhara_socket_io.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
+import 'package:testtimed/models/chat_models.dart';
+import 'package:testtimed/models/user_model.dart';
 import 'package:testtimed/pages/settings/settings_page.dart';
-import 'package:flutter_socket_io/socket_io_manager.dart';
 import 'package:testtimed/providers/global/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DashboardService with ChangeNotifier {
   SocketIO socketIO;
+  int numUsers;
+  bool isLoading = true;
+  List<User> users = [];
+  List<Message> messages = [];
+  final TextEditingController messageController = TextEditingController();
 
   DashboardService(BuildContext context) {
     setupSocketIO(context);
   }
 
   setupSocketIO(BuildContext context) async {
-    socketIO = SocketIOManager().createSocketIO(
-      'http://127.0.0.1:3000',
-      '/chat',
-      socketStatusCallback: (data) => print(data),
-    );
-
-    await socketIO.init();
-    //Subscribe to an event to listen to
+    SocketIOManager manager = SocketIOManager();
+    this.socketIO = await manager
+        .createInstance(SocketOptions('https://socketio-chat-example.now.sh/'));
     AuthService authService = Provider.of<AuthService>(context, listen: false);
-    Map<String, String> userData = {
-      'username': authService.user.username,
-    };
-    await socketIO.sendMessage('add user', json.encode(userData));
-    await socketIO.subscribe('new message', (jsonData) {
-      Map<String, dynamic> data = json.decode(jsonData);
-      print(data);
+    socketIO.onConnect((data) {
+      socketIO.emit("add user", [
+        authService.user.username +
+            '#' +
+            authService.user.photo.index.toString()
+      ]);
     });
-    //Connect to the socket
-    await socketIO.connect();
+    socketIO.on("new message", (data) {
+      String message = data['message'];
+      String username = data['username'];
+      this.messages.add(Message(
+            message: message,
+            username: username,
+          ));
+      notifyListeners();
+    });
+    socketIO.on("login", (data) {
+      numUsers = data['numUsers'];
+      notifyListeners();
+    });
+    socketIO.on('user joined', (data) async {
+      print('NEW joined: $data');
+      await addUser(data['username']);
+      numUsers = data['numUsers'];
+      notifyListeners();
+    });
+    socketIO.on('user left', (data) async {
+      print('NEW left: $data');
+      await removeUser(data['username']);
+      numUsers = data['numUsers'];
+      notifyListeners();
+    });
+    socketIO.connect();
+    isLoading = false;
+    notifyListeners();
+  }
+
+  openWebSocketsPage() {
+    launch('https://socketio-chat-example.now.sh/');
+  }
+
+  addUser(String username) async {
+    if (!users.any((user) => user.username == username)) {
+      Photo photo;
+      try {
+        String imageID = username.split('#').last;
+        int imageInt = int.parse(imageID);
+        photo = Photo.values[imageInt];
+      } catch (e) {
+        photo = Photo.values[0];
+      }
+      users.add(
+        User(
+          username: username,
+          photo: photo,
+        ),
+      );
+      notifyListeners();
+      await Fluttertoast.cancel();
+      Fluttertoast.showToast(msg: '$username se ha unido a la sala');
+    }
+  }
+
+  removeUser(String username) async {
+    if (users.any((user) => user.username == username)) {
+      User user = users.firstWhere((user) => user.username == username);
+      users.remove(user);
+      notifyListeners();
+      await Fluttertoast.cancel();
+      Fluttertoast.showToast(msg: '$username ha dejado la sala');
+    }
+  }
+
+  sendMessage(BuildContext context) async {
+    socketIO.emit('new message', [messageController.text]);
+    AuthService authService = Provider.of<AuthService>(context, listen: false);
+    messages.add(Message(
+      username: authService.user.username +
+          '#' +
+          authService.user.photo.index.toString(),
+      message: messageController.text,
+    ));
+    notifyListeners();
   }
 
   goToSettings(BuildContext context) {
