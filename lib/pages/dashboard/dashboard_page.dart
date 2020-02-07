@@ -37,9 +37,13 @@ class DashboardPageBase extends StatelessWidget {
         centerTitle: true,
         actions: <Widget>[
           IconButton(
+            icon: Icon(Icons.sentiment_very_satisfied),
+            onPressed: () => dashboardService.openWebSocketsPage(),
+          ),
+          IconButton(
             icon: Icon(Icons.settings),
             onPressed: () => dashboardService.goToSettings(context),
-          )
+          ),
         ],
       ),
       body: Column(
@@ -50,7 +54,7 @@ class DashboardPageBase extends StatelessWidget {
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Text('USUARIOS'),
+                    child: Text('OTROS USUARIOS EN ESTE CHAT'),
                   ),
                 ),
                 for (User user in dashboardService.users)

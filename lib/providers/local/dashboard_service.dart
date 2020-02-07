@@ -6,6 +6,7 @@ import 'package:testtimed/models/chat_models.dart';
 import 'package:testtimed/models/user_model.dart';
 import 'package:testtimed/pages/settings/settings_page.dart';
 import 'package:testtimed/providers/global/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DashboardService with ChangeNotifier {
   SocketIO socketIO;
@@ -13,6 +14,7 @@ class DashboardService with ChangeNotifier {
   bool isLoading = true;
   List<User> users = [];
   List<Message> messages = [];
+  final TextEditingController messageController = TextEditingController();
 
   DashboardService(BuildContext context) {
     setupSocketIO(context);
@@ -60,6 +62,10 @@ class DashboardService with ChangeNotifier {
     notifyListeners();
   }
 
+  openWebSocketsPage() {
+    launch('https://socketio-chat-example.now.sh/');
+  }
+
   addUser(String username) async {
     if (!users.any((user) => user.username == username)) {
       Photo photo;
@@ -90,6 +96,18 @@ class DashboardService with ChangeNotifier {
       await Fluttertoast.cancel();
       Fluttertoast.showToast(msg: '$username ha dejado la sala');
     }
+  }
+
+  sendMessage(BuildContext context) async {
+    socketIO.emit('new message', [messageController.text]);
+    AuthService authService = Provider.of<AuthService>(context, listen: false);
+    messages.add(Message(
+      username: authService.user.username +
+          '#' +
+          authService.user.photo.index.toString(),
+      message: messageController.text,
+    ));
+    notifyListeners();
   }
 
   goToSettings(BuildContext context) {
