@@ -10,7 +10,7 @@ class DashboardPage extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (context) => DashboardService(),
+          create: (context) => DashboardService(context),
         )
       ],
       child: DashboardPageBase(),
