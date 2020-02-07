@@ -15,8 +15,8 @@ class DashboardService with ChangeNotifier {
 
   setupSocketIO(BuildContext context) async {
     socketIO = SocketIOManager().createSocketIO(
-      'http://127.0.0.1:3000',
-      '/chat',
+      'https://socketio-chat-example.now.sh',
+      '/',
       socketStatusCallback: (data) => print(data),
     );
 
