@@ -22,7 +22,7 @@ class AuthService with ChangeNotifier {
     notifyListeners();
   }
 
-  logout() async {
+  Future<void> logout() async {
     user = null;
     await AuthController.deleteUser();
     notifyListeners();
